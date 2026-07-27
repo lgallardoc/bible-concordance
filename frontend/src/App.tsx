@@ -208,11 +208,12 @@ function App(): React.ReactElement {
         {estado.fase === 'contando' && (
           <div className="progreso-container">
             <div className="progreso-contenido">
-              <p>🔍 Buscando versículos para "{estado.tema}"...</p>
+              <div className="hourglass-spinner"></div>
+              <p>⏳ Buscando versículos para "{estado.tema}"...</p>
               <div className="barra-progreso">
-                <div className="barra-progreso-relleno"></div>
+                <div className="barra-progreso-relleno barra-indeterminada"></div>
               </div>
-              <p className="progreso-texto">Contabilizando resultados en la API</p>
+              <p className="progreso-texto">Contabilizando resultados en la API...</p>
             </div>
           </div>
         )}

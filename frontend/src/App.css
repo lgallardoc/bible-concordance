@@ -357,3 +357,42 @@ body {
   color: #4f46e5;
   margin-bottom: 16px;
 }
+
+/* Hourglass Spinner */
+.hourglass-spinner {
+  border: 4px solid #e5e7eb;
+  border-right-color: #4f46e5;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 20px auto;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Barra indeterminada para FASE 1 */
+.barra-indeterminada {
+  width: 100%;
+  animation: cargarIndeterminada 1.5s ease-in-out infinite;
+}
+
+@keyframes cargarIndeterminada {
+  0% {
+    width: 10%;
+  }
+  50% {
+    width: 85%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+}
