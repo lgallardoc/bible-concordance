@@ -1,4 +1,4 @@
-import { TemaConcordancia, Versiculo } from '../types';
+import { TemaConcordancia } from '../types';
 
 const API_BASE_URL = 'http://localhost:3000/api';
 

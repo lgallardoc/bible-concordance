@@ -2,6 +2,38 @@
 
 Una aplicación web interactiva para explorar concordancias bíblicas con visualización de grafos conceptuales. Permite buscar temas, ver versículos relacionados y comprender la relación entre ellos mediante un mapa visual.
 
+## 🚀 Inicio Rápido
+
+### Opción 1: Script automatizado (RECOMENDADO)
+
+```bash
+# Ejecuta el proyecto con puertos fijos: Backend 3000, Frontend 5173
+./start-dev.sh
+
+# En otra terminal, para detener todo:
+./stop.sh
+```
+
+### Opción 2: Manual
+
+```bash
+# Terminal 1 - Backend (Puerto 3000)
+cd backend
+npm install
+npm start
+
+# Terminal 2 - Frontend (Puerto 5173)
+cd frontend
+npm install
+npm run dev
+```
+
+### URLs de Acceso
+
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:3000/api
+- **Health Check**: http://localhost:3000/health
+
 ## 🎯 Características
 
 - ✅ **Búsqueda en dos fases**: Contabilización rápida + Descarga con progreso

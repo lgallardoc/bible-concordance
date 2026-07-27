@@ -5,11 +5,11 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/src/index.js",
-    "dev": "ts-node src/index.ts",
+    "start": "PORT=3000 node dist/src/index.js",
+    "dev": "PORT=3000 ts-node src/index.ts",
     "build-index": "ts-node scripts/build-index.ts",
-    "test": "jest",
-    "test:watch": "jest --watch"
+    "test": "ts-node scripts/run-tests.ts",
+    "test:watch": "ts-node scripts/run-tests.ts"
   },
   "dependencies": {
     "axios": "^1.18.1",

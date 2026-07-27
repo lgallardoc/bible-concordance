@@ -7,11 +7,13 @@ import ReactFlow, {
   useNodesState, 
   useEdgesState 
 } from 'reactflow';
+// @ts-ignore - CSS import
 import 'reactflow/dist/style.css';
+// @ts-ignore - CSS import
+import './App.css';
 import { contarVersiculos, descargarCitas, obtenerTextoVersiculo, limpiarCache } from './api/client';
 import { calcularLayoutConcordancia } from './utils/graphLayout';
 import { TemaConcordancia } from './types';
-import './App.css';
 
 export interface AppState {
   fase: 'espera' | 'contando' | 'descargando' | 'listo'; // Estados del flujo

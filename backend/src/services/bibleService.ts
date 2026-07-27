@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import axios from 'axios';
 import { Versiculo, TemaConcordancia } from '../types/index';
+import { ReferenceExtractor } from '../../lib/bible/referenceExtractor';
 
 export class BibleService {
   private db: Database.Database;
@@ -162,6 +163,26 @@ export class BibleService {
       } else {
         console.log(`✅ Descargadas ${citas.length} citas para "${tema}"`);
       }
+
+      // Extraer referencias cruzadas de cada versículo
+      citas = citas.map((versiculo) => {
+        try {
+          const referencias = ReferenceExtractor.extractValidReferences(versiculo.texto);
+          const referenciasNormalizadas = ReferenceExtractor.normalizeReferences(referencias);
+          
+          if (referenciasNormalizadas.length > 0) {
+            console.log(`  🔗 ${versiculo.cita}: ${referenciasNormalizadas.length} referencias encontradas`);
+          }
+          
+          return {
+            ...versiculo,
+            referencias: referenciasNormalizadas,
+          };
+        } catch (error) {
+          console.log(`  ⚠️ Error extrayendo referencias de ${versiculo.cita}: ${error}`);
+          return versiculo;
+        }
+      });
     } catch (error) {
       console.log(`❌ Error al descargar citas: ${error}`);
       citas = this.obtenerDatosSimuladosBibleGateway(tema);

@@ -9,7 +9,7 @@ import { bibleService } from '../lib/bible/bibleService';
 import bibleRoutes from './routes/bibleRoutes';
 
 const app: Express = express();
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Middleware
 app.use(cors());
