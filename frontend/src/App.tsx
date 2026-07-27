@@ -14,6 +14,7 @@ import './App.css';
 import { contarVersiculos, descargarCitas, obtenerTextoVersiculo, limpiarCache } from './api/client';
 import { calcularLayoutConcordancia } from './utils/graphLayout';
 import { TemaConcordancia } from './types';
+import { MindMapPage } from './pages/MindMapPage';
 
 export interface AppState {
   fase: 'espera' | 'contando' | 'descargando' | 'listo'; // Estados del flujo
@@ -28,6 +29,7 @@ function App(): React.ReactElement {
   // Estados
   const [nodes, setNodes, onNodesChange] = useNodesState<Node[]>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
+  const [vistaActiva, setVistaActiva] = useState<'concordancia' | 'mindmap'>('concordancia');
   
   const [estado, setEstado] = useState<AppState>({
     fase: 'espera',
@@ -203,6 +205,35 @@ function App(): React.ReactElement {
 
   return (
     <div className="app-container">
+      {/* Tab Nav */}
+      <div style={{ display: 'flex', gap: '8px', padding: '8px 16px', background: '#4338ca', borderBottom: '1px solid #3730a3' }}>
+        <button
+          onClick={() => setVistaActiva('concordancia')}
+          style={{ padding: '6px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: 'bold',
+            background: vistaActiva === 'concordancia' ? '#fff' : 'transparent',
+            color: vistaActiva === 'concordancia' ? '#4338ca' : '#fff' }}
+        >
+          📖 Concordancia
+        </button>
+        <button
+          onClick={() => setVistaActiva('mindmap')}
+          style={{ padding: '6px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: 'bold',
+            background: vistaActiva === 'mindmap' ? '#fff' : 'transparent',
+            color: vistaActiva === 'mindmap' ? '#4338ca' : '#fff' }}
+        >
+          🧠 Mapa Mental
+        </button>
+      </div>
+
+      {/* Vista Mapa Mental */}
+      {vistaActiva === 'mindmap' && (
+        <div style={{ height: 'calc(100vh - 50px)' }}>
+          <MindMapPage />
+        </div>
+      )}
+
+      {/* Vista Concordancia */}
+      {vistaActiva === 'concordancia' && <div className="app-container-inner">
       <div className="panel-control">
         <h1>📖 Concordancia Bíblica</h1>
 
@@ -352,6 +383,7 @@ function App(): React.ReactElement {
           </div>
         )}
       </div>
+    </div>}
     </div>
   );
 }
