@@ -5,87 +5,72 @@ import ReactFlow, {
   Edge,
   Controls,
   Background,
-  MiniMap,
   useNodesState,
   useEdgesState,
 } from 'reactflow';
 // @ts-ignore
 import 'reactflow/dist/style.css';
 import { CustomNode } from './CustomNode';
-import { DrawerPanel } from './DrawerPanel';
 import { useMindMapData } from '../hooks/useMindMapData';
 
 interface BibleMindMapProps {
   verseId?: string;
+  onNodeSelect?: (node: any) => void;
 }
 
-const nodeTypes = {
-  custom: CustomNode,
-};
+const nodeTypes = { custom: CustomNode };
 
-export function BibleMindMap({ verseId = 'juan-3-16' }: BibleMindMapProps) {
-  const { graphData, selectedNode, generateGraph, handleNodeClick, setSelectedNode } =
-    useMindMapData(verseId);
+export function BibleMindMap({ verseId = 'juan-3-16', onNodeSelect }: BibleMindMapProps) {
+  const { graphData, generateGraph, handleNodeClick } = useMindMapData(verseId);
 
-  const [nodes, setNodes] = useNodesState<Node[]>([]);
-  const [edges, setEdges] = useEdgesState<Edge[]>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node[]>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
 
   useEffect(() => {
     generateGraph();
   }, [verseId]);
 
   useEffect(() => {
-    const reactFlowNodes = graphData.nodes.map((node: any) => ({
-      id: node.id,
-      data: { ...node.data },
-      position: node.position,
+    if (!graphData.nodes.length) return;
+    const rfNodes = graphData.nodes.map((n: any) => ({
+      id: n.id,
+      data: { ...n.data, nodeType: n.type },   // <-- pass nodeType into data
+      position: n.position,
       type: 'custom',
-      style: node.style,
-      selected: selectedNode?.id === node.id,
     }));
-
-    const reactFlowEdges = graphData.edges.map((edge: any) => ({
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      label: edge.label,
-      animated: edge.animated,
-      style: { stroke: '#94a3b8', strokeWidth: 2 },
-      markerEnd: 'arrowclosed',
+    const rfEdges = graphData.edges.map((e: any) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      label: e.label,
+      animated: e.animated ?? false,
+      style: { stroke: '#64748b', strokeWidth: 1.5 },
+      labelStyle: { fontSize: 10, fill: '#64748b' },
+      labelBgStyle: { fill: '#f8fafc', fillOpacity: 0.8 },
     }));
-
-    setNodes(reactFlowNodes);
-    setEdges(reactFlowEdges);
-  }, [graphData, selectedNode, setNodes, setEdges]);
+    setNodes(rfNodes);
+    setEdges(rfEdges);
+  }, [graphData, setNodes, setEdges]);
 
   return (
-    <div className="relative w-full h-full bg-gradient-to-br from-slate-50 to-slate-100">
+    <div style={{ width: '100%', height: '100%' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         onNodeClick={(_, node) => {
           handleNodeClick(node.id);
+          if (onNodeSelect) onNodeSelect({ id: node.id, data: node.data });
         }}
         nodeTypes={nodeTypes}
         fitView
+        fitViewOptions={{ padding: 0.2 }}
+        attributionPosition="bottom-right"
       >
-        <Background color="#aaa" gap={16} />
-        <Controls />
-        <MiniMap />
+        <Background color="#e2e8f0" gap={20} />
+        <Controls style={{ bottom: 40, right: 10 }} />
       </ReactFlow>
-
-      {/* Drawer Panel */}
-      <DrawerPanel selectedNode={selectedNode} onClose={() => setSelectedNode(null)} />
-
-      {/* Welcome Message */}
-      {!selectedNode && (
-        <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-4 max-w-xs">
-          <p className="text-sm text-gray-600">
-            👆 Haz clic en un nodo para ver detalles. Puedes hacer zoom, pan y seleccionar nodos para
-            explorar referencias cruzadas.
-          </p>
-        </div>
-      )}
     </div>
   );
 }

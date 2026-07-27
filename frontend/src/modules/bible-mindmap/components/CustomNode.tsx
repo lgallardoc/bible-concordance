@@ -1,50 +1,90 @@
-import { Handle, Position } from 'reactflow';
-import type { MindMapNode } from '../types';
+import { Handle, Position } from "reactflow";
 
-interface CustomNodeProps {
-  data: MindMapNode['data'];
-}
+const styles = {
+  verse: {
+    background: "linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)",
+    color: "#fff",
+    border: "3px solid #3730a3",
+    borderRadius: "10px",
+    padding: "12px 16px",
+    minWidth: "180px",
+    boxShadow: "0 4px 12px rgba(79,70,229,0.4)",
+    cursor: "pointer",
+    textAlign: "center" as const,
+  },
+  strongs: {
+    background: "linear-gradient(135deg, #0891b2 0%, #0e7490 100%)",
+    color: "#fff",
+    border: "2px solid #0c4a6e",
+    borderRadius: "8px",
+    padding: "8px 14px",
+    minWidth: "150px",
+    cursor: "pointer",
+    textAlign: "center" as const,
+  },
+  concordance: {
+    background: "#f0fdf4",
+    color: "#15803d",
+    border: "2px dashed #22c55e",
+    borderRadius: "8px",
+    padding: "8px 12px",
+    minWidth: "160px",
+    cursor: "pointer",
+    textAlign: "center" as const,
+  },
+};
 
-export function VersNode({ data }: CustomNodeProps) {
+export function VersNode({ data }: { data: any }) {
   return (
-    <div className="p-3 rounded-lg bg-indigo-600 text-white border-3 border-indigo-700 cursor-pointer transition-all">
-      <div className="text-sm font-bold text-center break-words max-w-xs">{data.label}</div>
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Bottom} />
+    <div style={styles.verse}>
+      <div style={{ fontSize: "11px", opacity: 0.8, marginBottom: "4px" }}>📖 Versículo</div>
+      <div style={{ fontSize: "13px", fontWeight: "bold" }}>{data.label}</div>
+      <Handle type="source" position={Position.Right} />
     </div>
   );
 }
 
-export function StrongsNode({ data }: CustomNodeProps) {
+export function StrongsNode({ data }: { data: any }) {
   return (
-    <div className="p-2 rounded-lg bg-cyan-500 text-white border-2 border-cyan-600 cursor-pointer transition-all hover:shadow-lg">
-      <div className="text-xs font-bold">{data.label}</div>
-      <div className="text-xs mt-1 opacity-80">{data.code}</div>
-      {data.count && <div className="text-xs mt-1 bg-white/20 rounded px-1">📊 {data.count}</div>}
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Bottom} />
+    <div style={styles.strongs}>
+      <div style={{ fontSize: "10px", opacity: 0.75, marginBottom: "2px" }}>♡ {data.code}</div>
+      <div style={{ fontSize: "13px", fontWeight: "bold" }}>{data.label}</div>
+      {data.count != null && (
+        <div style={{ fontSize: "10px", marginTop: "4px", opacity: 0.8 }}>
+          {data.count} concordancias
+        </div>
+      )}
+      <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Right} />
     </div>
   );
 }
 
-export function ConcordanceNode({ data }: CustomNodeProps) {
+export function ConcordanceNode({ data }: { data: any }) {
   return (
-    <div className="p-2 rounded-lg bg-green-100 text-green-900 border-2 border-dashed border-green-500 cursor-pointer transition-all hover:shadow-md">
-      <div className="text-xs font-semibold">{data.reference}</div>
-      {data.excerpt && <div className="text-xs mt-1 opacity-70 truncate">{data.excerpt}</div>}
-      <Handle type="target" position={Position.Top} />
+    <div style={styles.concordance}>
+      <div style={{ fontSize: "11px", fontWeight: "bold", marginBottom: "3px" }}>
+        {data.reference}
+      </div>
+      {data.excerpt && (
+        <div style={{ fontSize: "10px", opacity: 0.75, maxWidth: "160px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {data.excerpt}
+        </div>
+      )}
+      <Handle type="target" position={Position.Left} />
     </div>
   );
 }
 
-export function CustomNode({ data }: any) {
-  if (!data.type) {
-    // Detectar tipo por el contenido
-    if (data.reference && !data.code) {
-      return data.strongCode ? <ConcordanceNode data={data} /> : <VersNode data={data} />;
-    } else if (data.code) {
-      return <StrongsNode data={data} />;
-    }
-  }
-  return <div>Unknown node type</div>;
+export function CustomNode(props: any) {
+  const { data } = props;
+  const type = data.nodeType;
+  if (type === "verse") return <VersNode data={data} />;
+  if (type === "strongs") return <StrongsNode data={data} />;
+  if (type === "concordance") return <ConcordanceNode data={data} />;
+  return (
+    <div style={{ background: "#fee2e2", border: "1px solid #ef4444", padding: "8px", borderRadius: "6px", fontSize: "11px" }}>
+      {data.label || "Nodo desconocido"}
+    </div>
+  );
 }

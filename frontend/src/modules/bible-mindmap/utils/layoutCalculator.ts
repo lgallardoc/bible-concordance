@@ -13,11 +13,11 @@ export class LayoutCalculator {
   ): MindMapNode[] {
     const g = new dagre.graphlib.Graph();
     g.setGraph({
-      rankdir: 'TB',
-      nodesep: 120,
-      ranksep: 200,
-      marginx: 50,
-      marginy: 50,
+      rankdir: 'LR',
+      nodesep: 80,
+      ranksep: 220,
+      marginx: 60,
+      marginy: 40,
     });
     g.setDefaultEdgeLabel(() => ({}));
 
