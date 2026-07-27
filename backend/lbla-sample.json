@@ -1,0 +1,39 @@
+{
+  "version_id": 89,
+  "local_abbreviation": "LBLA",
+  "local_title": "La Biblia de las Américas",
+  "language": {
+    "iso_639_1": "es",
+    "iso_639_3": "spa",
+    "language_tag": "spa",
+    "local_name": "Español (América Latina)",
+    "text_direction": "ltr"
+  },
+  "repository": "https://github.com/mrk214/bible-data-es-spa",
+  "publisher": {
+    "name": "The Lockman Foundation"
+  },
+  "copyright": {
+    "html": "1986, 1995, 1997 by The Lockman Foundation",
+    "text": "1986, 1995, 1997 by The Lockman Foundation"
+  },
+  "books": [
+    {
+      "book_usfm": "GEN",
+      "name": "Génesis",
+      "chapters": [
+        {
+          "chapter_usfm": "GEN.1",
+          "is_chapter": true,
+          "previous": null,
+          "current": {
+            "usfm": "GEN.1",
+            "human": "Génesis 1"
+          },
+          "next": {
+            "usfm": "GEN.2",
+            "human": "Génesis 2",
+            "canonical": true,
+            "toc": true
+          },
+          "chapter_html": "<div class=\"version vid89 iso6393spa\" data-vid=\"89\" data-iso6393=\"spa\">\n   <div class=\"book bkGEN\">\n      <div class=\"chapter ch1\" data-usfm=\"GEN.1\">\n         <div class=\"label\">1</div><div class=\"s\"><span class=\"heading\">  </span><span class=\"it\"><span class=\"heading\">La creaci&#243;n</span></span></div><div class=\"p\"><span class=\"content\">  </span><span class=\"verse v1\" data-usfm=\"GEN.1.1\"><span class=\"label\">1</span><span class=\"content\">En el principio cre&#243; Dios los cielos y la tierra. </span></span><span class=\"verse v2\" data-usfm=\"GEN.1.2\"><span class=\"label\">2</span><span class=\"content\">Y la tierra estaba sin orden y vac&#237;a</span><span class=\"note f\"><span class=\"label\">#</span><span class=\" body\"><span class=\"fr\">1:2 </span><span class=\"ft\">O, <span class=\"it\">era caos y vacuidad</span></span></span></span><span class=\"content\">, y las tinieblas cubr&#237;an la superficie</span><span class=\"note f\"><span class=
