@@ -16,7 +16,10 @@ export interface GrafoLayout {
  * Calcula las posiciones X,Y de los versículos usando Dagre
  * Formato: Left-to-Right (LR) para visualizar la concordancia como un mapa conceptual
  */
-export function calcularLayoutConcordancia(concordancia: TemaConcordancia): GrafoLayout {
+export function calcularLayoutConcordancia(
+  concordancia: TemaConcordancia,
+  onClickVersiculo?: (cita: string) => void
+): GrafoLayout {
   // Crear grafo dirigido
   const g = new dagre.graphlib.Graph();
 
@@ -90,23 +93,47 @@ export function calcularLayoutConcordancia(concordancia: TemaConcordancia): Graf
         id: nodeId,
         data: {
           label: (
-            <div>
-              <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>{versiculo.cita}</div>
-              <div style={{ fontSize: '12px', lineHeight: '1.4' }}>{versiculo.texto}</div>
-            </div>
+            <button 
+              onClick={() => {
+                console.log('Click en versículo:', versiculo.cita);
+                if (onClickVersiculo) {
+                  onClickVersiculo(versiculo.cita);
+                }
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+                width: '100%',
+                height: '100%',
+                fontSize: '12px',
+                color: '#111827',
+                fontWeight: '500',
+                wordBreak: 'break-word',
+              }}
+              title={`Click para ver texto de ${versiculo.cita}`}
+            >
+              {versiculo.cita}
+            </button>
           ),
+          cita: versiculo.cita,
         },
         position: { x: dagreNode.x - ANCHO_NODO / 2, y: dagreNode.y - ALTO_NODO / 2 },
         style: {
           background: '#f3f4f6',
           color: '#111827',
-          border: '1px solid #d1d5db',
+          border: '2px solid #d1d5db',
           borderRadius: '6px',
           padding: '10px',
           fontSize: '12px',
           width: ANCHO_NODO,
           height: ALTO_NODO,
-          overflow: 'auto',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
         },
       });
     }

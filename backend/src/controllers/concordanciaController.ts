@@ -4,6 +4,7 @@ import { TemaConcordancia } from '../types/index';
 
 // Cache en memoria para estrategia Cache-First
 const cache = new Map<string, TemaConcordancia>();
+const cacheConteo = new Map<string, number>();
 
 export class ConcordanciaController {
   private bibleService: BibleService;
@@ -13,13 +14,9 @@ export class ConcordanciaController {
   }
 
   /**
-   * Estrategia Cache-First:
-   * 1. Comprueba si existe en caché
-   * 2. Si no existe, busca en local
-   * 3. Si no existe en local, busca en red
-   * 4. Guarda en cache y responde
+   * FASE 1: Contar versículos encontrados
    */
-  async obtenerConcordancia(req: Request, res: Response): Promise<void> {
+  async contarVersiculos(req: Request, res: Response): Promise<void> {
     try {
       const { tema } = req.query;
 
@@ -28,9 +25,51 @@ export class ConcordanciaController {
         return;
       }
 
-      // 1. Comprobar caché
+      // Comprobar si ya tenemos el conteo en caché
+      if (cacheConteo.has(tema)) {
+        console.log(`✓ Conteo en caché para tema: ${tema}`);
+        res.json({
+          tema,
+          total: cacheConteo.get(tema),
+        });
+        return;
+      }
+
+      // Contar desde API
+      console.log(`📊 Contando versículos para tema: ${tema}`);
+      const total = await this.bibleService.contarVersiculos(tema);
+
+      // Guardar conteo en caché
+      cacheConteo.set(tema, total);
+
+      res.json({
+        tema,
+        total,
+      });
+    } catch (error) {
+      console.error('Error en contarVersiculos:', error);
+      res.status(500).json({
+        error: 'Error al contar versículos',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  /**
+   * FASE 2: Descargar citas del tema
+   */
+  async descargarCitas(req: Request, res: Response): Promise<void> {
+    try {
+      const { tema } = req.query;
+
+      if (!tema || typeof tema !== 'string') {
+        res.status(400).json({ error: 'El parámetro "tema" es requerido' });
+        return;
+      }
+
+      // Comprobar caché primero
       if (cache.has(tema)) {
-        console.log(`✓ Caché hit para tema: ${tema}`);
+        console.log(`✓ Citas en caché para tema: ${tema}`);
         res.json({
           source: 'cache',
           data: cache.get(tema),
@@ -38,42 +77,68 @@ export class ConcordanciaController {
         return;
       }
 
-      // 2. Buscar en base de datos local
-      const temaBD = this.bibleService.obtenerTemaLocal(tema);
-      if (temaBD) {
-        console.log(`✓ BD hit para tema: ${tema}`);
-        cache.set(tema, temaBD);
-        res.json({
-          source: 'database',
-          data: temaBD,
-        });
-        return;
-      }
+      // Descargar citas desde API
+      console.log(`⬇️ Descargando citas para tema: ${tema}`);
+      const citas = await this.bibleService.descargarCitas(tema, (progreso, total) => {
+        // Aquí podrías enviar eventos de progreso si usas WebSockets
+        console.log(`⏳ Progreso: ${progreso}/${total}`);
+      });
 
-      // 3. Buscar en la red (simulado)
-      console.log(`🌐 Buscando en red para tema: ${tema}`);
-      const temaRed = await this.bibleService.buscarEnRedYGuardar(tema);
+      const temaConcordancia: TemaConcordancia = {
+        tema,
+        versiculos: citas,
+      };
 
-      // 4. Guardar en caché y responder
-      cache.set(tema, temaRed);
+      // Guardar en caché
+      cache.set(tema, temaConcordancia);
+
       res.json({
         source: 'network',
-        data: temaRed,
+        data: temaConcordancia,
       });
     } catch (error) {
-      console.error('Error en obtenerConcordancia:', error);
+      console.error('Error en descargarCitas:', error);
       res.status(500).json({
-        error: 'Error al obtener la concordancia',
+        error: 'Error al descargar citas',
         details: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
 
   /**
-   * Limpia el caché en memoria
+   * Obtener texto completo de un versículo
+   */
+  async obtenerTextoVersiculo(req: Request, res: Response): Promise<void> {
+    try {
+      const { cita } = req.query;
+
+      if (!cita || typeof cita !== 'string') {
+        res.status(400).json({ error: 'El parámetro "cita" es requerido' });
+        return;
+      }
+
+      console.log(`📖 Obteniendo texto de: ${cita}`);
+      const texto = await this.bibleService.obtenerTextoVersiculo(cita);
+
+      res.json({
+        cita,
+        texto,
+      });
+    } catch (error) {
+      console.error('Error en obtenerTextoVersiculo:', error);
+      res.status(500).json({
+        error: 'Error al obtener texto del versículo',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  /**
+   * Limpia el caché en memoria y en BD
    */
   limpiarCache(_req: Request, res: Response): void {
     cache.clear();
+    cacheConteo.clear();
     res.json({ message: 'Caché limpiado correctamente' });
   }
 }

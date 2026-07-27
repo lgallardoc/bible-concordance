@@ -5,9 +5,97 @@ import { Versiculo, TemaConcordancia } from '../types/index';
 export class BibleService {
   private db: Database.Database;
   private readonly BIBLE_API_URL = 'https://www.bible-api.com';
+  
+  // Mapeo de libros bíblicos español -> inglés
+  private readonly LIBRO_MAPEO: Record<string, string> = {
+    'génesis': 'Genesis',
+    'éxodo': 'Exodus',
+    'levítico': 'Leviticus',
+    'números': 'Numbers',
+    'deuteronomio': 'Deuteronomy',
+    'josué': 'Joshua',
+    'jueces': 'Judges',
+    'rut': 'Ruth',
+    '1 samuel': '1 Samuel',
+    '2 samuel': '2 Samuel',
+    '1 reyes': '1 Kings',
+    '2 reyes': '2 Kings',
+    '1 crónicas': '1 Chronicles',
+    '2 crónicas': '2 Chronicles',
+    'esdras': 'Ezra',
+    'nehemías': 'Nehemiah',
+    'ester': 'Esther',
+    'job': 'Job',
+    'salmos': 'Psalms',
+    'proverbios': 'Proverbs',
+    'eclesiastés': 'Ecclesiastes',
+    'cantar de los cantares': 'Song of Songs',
+    'isaías': 'Isaiah',
+    'jeremías': 'Jeremiah',
+    'lamentaciones': 'Lamentations',
+    'ezequiel': 'Ezekiel',
+    'daniel': 'Daniel',
+    'oseas': 'Hosea',
+    'joel': 'Joel',
+    'amós': 'Amos',
+    'abdías': 'Obadiah',
+    'jonás': 'Jonah',
+    'miqueas': 'Micah',
+    'nahúm': 'Nahum',
+    'habacuc': 'Habakkuk',
+    'sofonías': 'Zephaniah',
+    'hageo': 'Haggai',
+    'zacarías': 'Zechariah',
+    'malaquías': 'Malachi',
+    'mateo': 'Matthew',
+    'marcos': 'Mark',
+    'lucas': 'Luke',
+    'juan': 'John',
+    'hechos': 'Acts',
+    'romanos': 'Romans',
+    '1 corintios': '1 Corinthians',
+    '2 corintios': '2 Corinthians',
+    'gálatas': 'Galatians',
+    'efesios': 'Ephesians',
+    'filipenses': 'Philippians',
+    'colosenses': 'Colossians',
+    '1 tesalonicenses': '1 Thessalonians',
+    '2 tesalonicenses': '2 Thessalonians',
+    '1 timoteo': '1 Timothy',
+    '2 timoteo': '2 Timothy',
+    'tito': 'Titus',
+    'filemón': 'Philemon',
+    'hebreos': 'Hebrews',
+    'santiago': 'James',
+    '1 pedro': '1 Peter',
+    '2 pedro': '2 Peter',
+    '1 juan': '1 John',
+    '2 juan': '2 John',
+    '3 juan': '3 John',
+    'judas': 'Jude',
+    'apocalipsis': 'Revelation',
+  };
 
   constructor(db: Database.Database) {
     this.db = db;
+  }
+  
+  /**
+   * Convierte una cita en español a inglés
+   */
+  private convertirCitaAIngles(citaEspanol: string): string {
+    let citaIngles = citaEspanol;
+    
+    // Encontrar el libro
+    for (const [es, en] of Object.entries(this.LIBRO_MAPEO)) {
+      const regex = new RegExp(`^${es}\\s+`, 'i');
+      if (regex.test(citaEspanol)) {
+        citaIngles = citaIngles.replace(regex, `${en} `);
+        break;
+      }
+    }
+    
+    return citaIngles;
   }
 
   /**
@@ -36,51 +124,120 @@ export class BibleService {
   }
 
   /**
-   * Busca en la API real de Bible, con fallback a datos simulados
+   * FASE 1: Contar versículos encontrados sin descargar texto
    */
-  async buscarEnRedYGuardar(tema: string): Promise<TemaConcordancia> {
-    let versiculos: Versiculo[] = [];
-
+  async contarVersiculos(tema: string): Promise<number> {
     try {
-      // Intentar obtener de API real
-      console.log(`🔍 Buscando "${tema}" en Bible API...`);
-      versiculos = await this.buscarEnBibleAPI(tema);
-
-      if (versiculos.length === 0) {
-        console.log(`⚠️ No se encontraron resultados en API para "${tema}", usando datos simulados`);
-        versiculos = this.obtenerDatosSimuladosBibleGateway(tema);
-      } else {
-        console.log(`✅ Encontrados ${versiculos.length} versículos en Bible API para "${tema}"`);
+      console.log(`📊 Contando versículos para "${tema}" en Bible API...`);
+      const count = await this.contarEnBibleAPI(tema);
+      
+      if (count > 0) {
+        console.log(`📈 Encontrados ${count} versículos para "${tema}"`);
+        return count;
       }
     } catch (error) {
-      console.log(`❌ Error al consultar API: ${error}, usando datos simulados`);
-      versiculos = this.obtenerDatosSimuladosBibleGateway(tema);
+      console.log(`❌ Error al contar en API: ${error}`);
     }
 
-    // Guardar en BD
-    this.guardarEnBaseDatos(tema, versiculos);
-
-    return {
-      tema,
-      versiculos,
-    };
+    // Fallback a datos simulados
+    console.log(`⚠️ Usando datos simulados para "${tema}"`);
+    const fallback = this.obtenerDatosSimuladosBibleGateway(tema);
+    console.log(`📈 Fallback: ${fallback.length} versículos`);
+    return fallback.length;
   }
 
   /**
-   * Busca versículos en Bible API que contengan la palabra clave
+   * FASE 2: Descargar solo las citas (sin texto completo)
    */
-  private async buscarEnBibleAPI(keyword: string): Promise<Versiculo[]> {
-    const versiculos: Versiculo[] = [];
+  async descargarCitas(tema: string, callback?: (progreso: number, total: number) => void): Promise<Versiculo[]> {
+    let citas: Versiculo[] = [];
+
+    try {
+      console.log(`⬇️ Descargando citas para "${tema}"...`);
+      citas = await this.descargarCitasDesdeAPI(tema, callback);
+
+      if (citas.length === 0) {
+        console.log(`⚠️ No se descargaron citas de API para "${tema}", usando fallback`);
+        citas = this.obtenerDatosSimuladosBibleGateway(tema);
+      } else {
+        console.log(`✅ Descargadas ${citas.length} citas para "${tema}"`);
+      }
+    } catch (error) {
+      console.log(`❌ Error al descargar citas: ${error}`);
+      citas = this.obtenerDatosSimuladosBibleGateway(tema);
+    }
+
+    // Guardar en BD
+    this.guardarEnBaseDatos(tema, citas);
+
+    return citas;
+  }
+
+  /**
+   * Obtener texto completo de un versículo específico
+   */
+  async obtenerTextoVersiculo(cita: string): Promise<string> {
+    try {
+      console.log(`📖 Obteniendo texto de ${cita}...`);
+      
+      // Primero, buscar en los datos simulados
+      const textoSimulado = this.obtenerTextoSimulado(cita);
+      if (textoSimulado) {
+        console.log(`✅ Texto obtenido de datos simulados para ${cita}`);
+        return textoSimulado;
+      }
+      
+      // Si no está en simulados, intentar la API
+      const citaIngles = this.convertirCitaAIngles(cita);
+      console.log(`🔤 Cita convertida: ${cita} -> ${citaIngles}`);
+      
+      const response = await axios.get(`${this.BIBLE_API_URL}/${encodeURIComponent(citaIngles)}`);
+      
+      if (response.data && response.data.text) {
+        const texto = response.data.text.trim();
+        console.log(`✅ Texto obtenido de API para ${cita}`);
+        return texto;
+      }
+    } catch (error) {
+      console.log(`⚠️ Error al obtener texto: ${error}`);
+    }
+    
+    return `Texto no disponible para ${cita}`;
+  }
+
+  /**
+   * Buscar texto en los datos simulados
+   */
+  private obtenerTextoSimulado(cita: string): string | null {
+    // Buscar en todos los temas simulados
+    const temas = ['fe', 'amor', 'paz', 'gozo', 'esperanza', 'sabiduría'];
+    
+    for (const tema of temas) {
+      const versiculos = this.obtenerDatosSimuladosBibleGateway(tema);
+      const versiculo = versiculos.find(v => v.cita.toLowerCase() === cita.toLowerCase());
+      if (versiculo) {
+        return versiculo.texto;
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * FASE 1: Contar versículos en la API
+   */
+  private async contarEnBibleAPI(keyword: string): Promise<number> {
+    let contador = 0;
     const libros = this.obtenerLibrosBiblia();
 
     for (const libro of libros) {
-      if (versiculos.length >= 300) break;
+      if (contador >= 300) break;
 
       try {
         const capitulosDelLibro = this.obtenerCapitulosPorLibro(libro);
 
         for (const capitulo of capitulosDelLibro) {
-          if (versiculos.length >= 300) break;
+          if (contador >= 300) break;
 
           try {
             const referencia = `${libro} ${capitulo}`;
@@ -89,12 +246,14 @@ export class BibleService {
             if (response.data && response.data.passages) {
               for (const passage of response.data.passages) {
                 const texto = passage.content || '';
-
                 if (texto.toLowerCase().includes(keyword.toLowerCase())) {
-                  const versos = this.extraerVersiculos(passage, keyword);
-                  versiculos.push(...versos);
-
-                  if (versiculos.length >= 300) break;
+                  const lineas = texto.split('\n').filter((l: string) => l.trim());
+                  for (const linea of lineas) {
+                    if (linea.toLowerCase().includes(keyword.toLowerCase())) {
+                      contador++;
+                      if (contador >= 300) break;
+                    }
+                  }
                 }
               }
             }
@@ -107,7 +266,69 @@ export class BibleService {
       }
     }
 
-    return versiculos.slice(0, 300);
+    return Math.min(contador, 300);
+  }
+
+  /**
+   * FASE 2: Descargar solo citas (sin texto completo)
+   */
+  private async descargarCitasDesdeAPI(
+    keyword: string,
+    callback?: (progreso: number, total: number) => void
+  ): Promise<Versiculo[]> {
+    const citas: Versiculo[] = [];
+    const libros = this.obtenerLibrosBiblia();
+    let progreso = 0;
+    let totalEstimado = 50; // Estimación inicial
+
+    for (const libro of libros) {
+      if (citas.length >= 300) break;
+
+      try {
+        const capitulosDelLibro = this.obtenerCapitulosPorLibro(libro);
+
+        for (const capitulo of capitulosDelLibro) {
+          if (citas.length >= 300) break;
+
+          try {
+            const referencia = `${libro} ${capitulo}`;
+            const response = await axios.get(`${this.BIBLE_API_URL}/?passage=${encodeURIComponent(referencia)}`);
+
+            if (response.data && response.data.passages) {
+              for (const passage of response.data.passages) {
+                const texto = passage.content || '';
+
+                if (texto.toLowerCase().includes(keyword.toLowerCase())) {
+                  const lineas = texto.split('\n').filter((l: string) => l.trim());
+
+                  for (const linea of lineas) {
+                    if (linea.toLowerCase().includes(keyword.toLowerCase())) {
+                      const match = linea.match(/^(.+?)\s+(.+)$/);
+                      citas.push({
+                        cita: match ? match[1].trim() : passage.reference || 'Desconocida',
+                        // Guardar solo el reference, el texto se carga después
+                        texto: '',
+                      });
+
+                      progreso++;
+                      callback?.(progreso, totalEstimado);
+
+                      if (citas.length >= 300) break;
+                    }
+                  }
+                }
+              }
+            }
+          } catch (err) {
+            continue;
+          }
+        }
+      } catch (err) {
+        continue;
+      }
+    }
+
+    return citas;
   }
 
   /**

@@ -20,7 +20,9 @@ const bibleService = new BibleService(db);
 const concordanciaController = new ConcordanciaController(bibleService);
 
 // Rutas de la API
-app.get('/api/concordancia', (req, res) => concordanciaController.obtenerConcordancia(req, res));
+app.get('/api/concordancia/contar', (req, res) => concordanciaController.contarVersiculos(req, res));
+app.get('/api/concordancia/descargar', (req, res) => concordanciaController.descargarCitas(req, res));
+app.get('/api/concordancia/texto', (req, res) => concordanciaController.obtenerTextoVersiculo(req, res));
 app.post('/api/cache/limpiar', (req, res) => concordanciaController.limpiarCache(req, res));
 
 // Ruta de health check

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import ReactFlow, { 
   Node, 
   Edge, 
@@ -8,17 +8,18 @@ import ReactFlow, {
   useEdgesState 
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { obtenerConcordancia, limpiarCache } from './api/client';
+import { contarVersiculos, descargarCitas, obtenerTextoVersiculo, limpiarCache } from './api/client';
 import { calcularLayoutConcordancia } from './utils/graphLayout';
 import { TemaConcordancia } from './types';
 import './App.css';
 
 export interface AppState {
-  cargando: boolean;
+  fase: 'espera' | 'contando' | 'descargando' | 'listo'; // Estados del flujo
   error: string | null;
   tema: string;
   concordancia: TemaConcordancia | null;
-  fuente: 'cache' | 'database' | 'network' | null;
+  totalVersiculos: number;
+  versiculosDescargados: number;
 }
 
 function App(): React.ReactElement {
@@ -27,17 +28,95 @@ function App(): React.ReactElement {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
   
   const [estado, setEstado] = useState<AppState>({
-    cargando: false,
+    fase: 'espera',
     error: null,
     tema: '',
     concordancia: null,
-    fuente: null,
+    totalVersiculos: 0,
+    versiculosDescargados: 0,
   });
 
   const [inputTema, setInputTema] = useState('');
+  const [textoVersiculo, setTextoVersiculo] = useState<{ cita: string; texto: string } | null>(null);
 
   /**
-   * Buscar concordancia para un tema
+   * FASE 1: Contar versículos
+   */
+  const contar = useCallback(async (temaABuscar: string): Promise<number> => {
+    try {
+      setEstado((prev) => ({
+        ...prev,
+        fase: 'contando',
+        error: null,
+        tema: temaABuscar,
+      }));
+
+      const respuesta = await contarVersiculos(temaABuscar);
+      console.log(`✅ Conteo completado: ${respuesta.total} versículos`);
+      
+      return respuesta.total;
+    } catch (err) {
+      const mensaje = err instanceof Error ? err.message : 'Error desconocido';
+      setEstado((prev) => ({
+        ...prev,
+        error: `Error al contar: ${mensaje}`,
+        fase: 'espera',
+      }));
+      throw err;
+    }
+  }, []);
+
+  /**
+   * FASE 2: Descargar citas con progreso
+   */
+  const descargar = useCallback(async (temaABuscar: string, total: number) => {
+    try {
+      setEstado((prev) => ({
+        ...prev,
+        fase: 'descargando',
+        totalVersiculos: total,
+        versiculosDescargados: 0,
+      }));
+
+      // Simular progreso mientras se descargan
+      let progreso = 0;
+      const intervalo = setInterval(() => {
+        progreso += Math.random() * 15;
+        if (progreso > total) progreso = total;
+        setEstado((prev) => ({
+          ...prev,
+          versiculosDescargados: Math.min(Math.floor(progreso), total),
+        }));
+      }, 100);
+
+      const respuesta = await descargarCitas(temaABuscar);
+
+      clearInterval(intervalo);
+      setEstado((prev) => ({
+        ...prev,
+        concordancia: respuesta.data,
+        versiculosDescargados: total,
+        fase: 'listo',
+      }));
+
+      // Calcular layout y actualizar React Flow
+      const layout = calcularLayoutConcordancia(respuesta.data, handleClickVersiculo);
+      setNodes(layout.nodes);
+      setEdges(layout.edges);
+    } catch (err) {
+      const mensaje = err instanceof Error ? err.message : 'Error desconocido';
+      setEstado((prev) => ({
+        ...prev,
+        error: `Error al descargar: ${mensaje}`,
+        fase: 'espera',
+      }));
+      setNodes([]);
+      setEdges([]);
+    }
+  }, [setNodes, setEdges]);
+
+  /**
+   * Buscar completamente: Contar + Descargar
    */
   const buscarConcordancia = useCallback(async (temaABuscar: string) => {
     if (!temaABuscar.trim()) {
@@ -45,37 +124,16 @@ function App(): React.ReactElement {
       return;
     }
 
-    setEstado((prev) => ({
-      ...prev,
-      cargando: true,
-      error: null,
-      tema: temaABuscar,
-    }));
-
     try {
-      const respuesta = await obtenerConcordancia(temaABuscar);
-      
-      setEstado((prev) => ({
-        ...prev,
-        concordancia: respuesta.data,
-        fuente: respuesta.source,
-        cargando: false,
-      }));
+      // FASE 1: Contar
+      const total = await contar(temaABuscar);
 
-      // Calcular layout y actualizar React Flow
-      const layout = calcularLayoutConcordancia(respuesta.data);
-      setNodes(layout.nodes);
-      setEdges(layout.edges);
+      // FASE 2: Descargar
+      await descargar(temaABuscar, total);
     } catch (err) {
-      setEstado((prev) => ({
-        ...prev,
-        error: err instanceof Error ? err.message : 'Error desconocido',
-        cargando: false,
-      }));
-      setNodes([]);
-      setEdges([]);
+      console.error('Error en búsqueda:', err);
     }
-  }, [setNodes, setEdges]);
+  }, [contar, descargar]);
 
   /**
    * Manejar envío del formulario
@@ -86,6 +144,22 @@ function App(): React.ReactElement {
   }, [inputTema, buscarConcordancia]);
 
   /**
+   * Click en versículo para obtener texto
+   */
+  const handleClickVersiculo = useCallback(async (cita: string) => {
+    try {
+      setTextoVersiculo(null);
+      const respuesta = await obtenerTextoVersiculo(cita);
+      setTextoVersiculo(respuesta);
+    } catch (err) {
+      setEstado((prev) => ({
+        ...prev,
+        error: `Error al obtener texto: ${err instanceof Error ? err.message : 'desconocido'}`,
+      }));
+    }
+  }, []);
+
+  /**
    * Limpiar caché
    */
   const handleLimpiarCache = useCallback(async () => {
@@ -94,7 +168,14 @@ function App(): React.ReactElement {
       setEstado((prev) => ({
         ...prev,
         error: 'Caché limpiado correctamente',
+        fase: 'espera',
+        concordancia: null,
+        totalVersiculos: 0,
+        versiculosDescargados: 0,
       }));
+      setNodes([]);
+      setEdges([]);
+      setInputTema('');
       setTimeout(() => {
         setEstado((prev) => ({ ...prev, error: null }));
       }, 2000);
@@ -104,10 +185,10 @@ function App(): React.ReactElement {
         error: `Error al limpiar caché: ${err instanceof Error ? err.message : 'unknown'}`,
       }));
     }
-  }, []);
+  }, [setNodes, setEdges]);
 
   /**
-   * Temas sugeridos para pruebas
+   * Temas sugeridos
    */
   const temasSugeridos = ['fe', 'amor', 'paz', 'gozo', 'esperanza', 'sabiduría'];
 
@@ -116,20 +197,46 @@ function App(): React.ReactElement {
     buscarConcordancia(tema);
   }, [buscarConcordancia]);
 
+  const estaOcupado = estado.fase !== 'espera' && estado.fase !== 'listo';
+
   return (
     <div className="app-container">
       <div className="panel-control">
         <h1>📖 Concordancia Bíblica</h1>
 
-        {/* Barra de progreso */}
-        {estado.cargando && (
+        {/* Progreso: Contando versículos */}
+        {estado.fase === 'contando' && (
           <div className="progreso-container">
             <div className="progreso-contenido">
-              <p>Procesando tu búsqueda...</p>
+              <p>🔍 Buscando versículos para "{estado.tema}"...</p>
               <div className="barra-progreso">
                 <div className="barra-progreso-relleno"></div>
               </div>
-              <p className="progreso-texto">Por favor espera, estamos consultando la API</p>
+              <p className="progreso-texto">Contabilizando resultados en la API</p>
+            </div>
+          </div>
+        )}
+
+        {/* Progreso: Descargando citas */}
+        {estado.fase === 'descargando' && (
+          <div className="progreso-container">
+            <div className="progreso-contenido">
+              <p>⬇️ Descargando citas</p>
+              <div className="progreso-info">
+                {estado.versiculosDescargados} / {estado.totalVersiculos}
+              </div>
+              <div className="barra-progreso">
+                <div 
+                  className="barra-progreso-relleno" 
+                  style={{ 
+                    width: `${(estado.versiculosDescargados / estado.totalVersiculos) * 100}%`,
+                    animation: 'none'
+                  }}
+                ></div>
+              </div>
+              <p className="progreso-texto">
+                {Math.round((estado.versiculosDescargados / estado.totalVersiculos) * 100)}%
+              </p>
             </div>
           </div>
         )}
@@ -141,15 +248,15 @@ function App(): React.ReactElement {
             value={inputTema}
             onChange={(e) => setInputTema(e.target.value)}
             placeholder="Busca un tema (ej: fe, amor, paciencia)..."
-            disabled={estado.cargando}
+            disabled={estaOcupado}
             className="input-tema"
           />
           <button
             type="submit"
-            disabled={estado.cargando}
+            disabled={estaOcupado}
             className="boton-buscar"
           >
-            {estado.cargando ? '⏳ Buscando...' : '🔍 Buscar'}
+            {estaOcupado ? '⏳ Procesando...' : '🔍 Buscar'}
           </button>
         </form>
 
@@ -161,7 +268,7 @@ function App(): React.ReactElement {
               <button
                 key={tema}
                 onClick={() => handleTemaSugerido(tema)}
-                disabled={estado.cargando}
+                disabled={estaOcupado}
                 className="boton-tema"
               >
                 {tema}
@@ -171,13 +278,13 @@ function App(): React.ReactElement {
         </div>
 
         {/* Estado de la búsqueda */}
-        {estado.concordancia && (
+        {estado.concordancia && estado.fase === 'listo' && (
           <div className="info-busqueda">
             <p>
               <strong>Tema:</strong> {estado.concordancia.tema}
             </p>
             <p>
-              <strong>Versículos encontrados:</strong> {estado.concordancia.versiculos.length}
+              <strong>Versículos descargados:</strong> {estado.concordancia.versiculos.length}
             </p>
             {estado.concordancia.versiculos.length === 0 && (
               <p style={{ color: '#dc2626', marginTop: '10px' }}>
@@ -185,12 +292,7 @@ function App(): React.ReactElement {
               </p>
             )}
             <p>
-              <strong>Fuente:</strong>{' '}
-              <span className={`fuente fuente-${estado.fuente}`}>
-                {estado.fuente === 'cache' && '💾 Caché'}
-                {estado.fuente === 'database' && '🗄️ Base de datos'}
-                {estado.fuente === 'network' && '🌐 Red'}
-              </span>
+              <strong>Fuente:</strong> 🌐 Red
             </p>
           </div>
         )}
@@ -205,17 +307,39 @@ function App(): React.ReactElement {
         {/* Botón para limpiar caché */}
         <button
           onClick={handleLimpiarCache}
-          disabled={estado.cargando}
+          disabled={estaOcupado}
           className="boton-limpiar"
         >
           🗑️ Limpiar caché
         </button>
+
+        {/* Modal de texto de versículo */}
+        {textoVersiculo && (
+          <div className="modal-overlay" onClick={() => setTextoVersiculo(null)}>
+            <div className="modal-contenido" onClick={(e) => e.stopPropagation()}>
+              <button className="modal-cerrar" onClick={() => setTextoVersiculo(null)}>✕</button>
+              <h3>{textoVersiculo.cita}</h3>
+              <p>{textoVersiculo.texto}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* React Flow - Mapa conceptual */}
       <div className="grafo-container">
         {nodes.length > 0 ? (
-          <ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}>
+          <ReactFlow 
+            nodes={nodes.map(node => ({
+              ...node,
+              data: {
+                ...node.data,
+                onClick: (cita: string) => handleClickVersiculo(cita)
+              }
+            }))} 
+            edges={edges} 
+            onNodesChange={onNodesChange} 
+            onEdgesChange={onEdgesChange}
+          >
             <Background color="#aaa" gap={16} />
             <Controls />
           </ReactFlow>
