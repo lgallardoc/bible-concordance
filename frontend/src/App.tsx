@@ -121,6 +121,19 @@ function App(): React.ReactElement {
       <div className="panel-control">
         <h1>📖 Concordancia Bíblica</h1>
 
+        {/* Barra de progreso */}
+        {estado.cargando && (
+          <div className="progreso-container">
+            <div className="progreso-contenido">
+              <p>Procesando tu búsqueda...</p>
+              <div className="barra-progreso">
+                <div className="barra-progreso-relleno"></div>
+              </div>
+              <p className="progreso-texto">Por favor espera, estamos consultando la API</p>
+            </div>
+          </div>
+        )}
+
         {/* Formulario de búsqueda */}
         <form onSubmit={handleBuscar} className="formulario-busqueda">
           <input
